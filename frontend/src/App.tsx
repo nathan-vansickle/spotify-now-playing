@@ -3,76 +3,78 @@ import "./App.css";
 import "./components/AlbumArt";
 import AlbumArt from "./components/AlbumArt";
 import TrackInfo from "./components/TrackInfo";
-import cover from "./assets/album.jpg";
+// import cover from "./assets/album.jpg";
+import axios from "axios";
+import { getColor } from "color-thief-react";
 
-const AUTHORIZE_URL = "https://accounts.spotify.com/authorize?";
-const CLIENT_ID = "b079ccc2ea2f46fdadf0af9a59940bda";
-const REDIRECT_URI = "http://localhost:5173";
-const SCOPES = "user-read-playback-state user-read-currently-playing";
+const BACKEND_URL = "http://localhost:5000";
 
+interface Track {
+  title: string;
+  artist: string;
+  album: string;
+}
 function App() {
   const [accessToken, setAccessToken] = useState("");
-  const [track, setTrack] = useState("song!");
+  const [refreshToken, setRefreshToken] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [bgColor, setBgColor] = useState("#000000");
+  const [track, setTrack] = useState<Track>({
+    title: "",
+    artist: "",
+    album: "",
+  });
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const token = window.location.hash.substring(1).split("&")[0].split("=")[1];
+    const params = new URLSearchParams(window.location.search);
+    const newAccessToken = params.get("access_token");
+    const newRefreshToken = params.get("refresh_token");
 
-    if (token) {
-      setAccessToken(token);
+    if (newAccessToken && newRefreshToken) {
+      setAccessToken(newAccessToken);
+      setRefreshToken(newRefreshToken);
     }
-  }, []);
 
-  useEffect(() => {
-    const fetchCurrentTrack = async () => {
-      if (!accessToken) {
-        return;
-      }
+    window.history.replaceState({}, document.title, window.location.pathname);
 
-      try {
-        const promise = fetch(
-          "https://api.spotify.com/v1/me/player/currently-playing",
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          }
-        ).then((response) => {
-          return response.json()
-        })
+    getCurrentTrack();
+    console.log(bgColor);
 
-        const printData = () => {
-          promise.then((data) => {
-            console.log(data.item.name);
-            console.log(data.item.artists[0].name);
-            console.log(data.item.album.name);
-          })
-        }
-
-        printData()
-
-      } catch (error) {
-        console.log(error);
-      }
-    };
-
-    fetchCurrentTrack()
-    const intervalId = setInterval(fetchCurrentTrack, 10000)
+    const intervalId = setInterval(getCurrentTrack, 1000);
+    return () => clearInterval(intervalId);
   }, [accessToken]);
 
-  
+  useEffect(() => {
+    async function getDominantColor() {
+      if (imageUrl) {
+        try {
+          const dominantColor = await getColor(imageUrl, "hex", "anonymous")
+          setBgColor(dominantColor)
+        } catch (error) {
+          console.log(error);
+        }
+      }
+    }
+
+    getDominantColor()
+  }, [imageUrl])
 
   return (
     <div>
       {!accessToken ? (
-        <button onClick={loginWithSpotify}>Login</button>
+        <button onClick={handleSpotifyLogin}>Login</button>
       ) : (
         <div>
-          <div className="grid grid-cols-2 grid-rows-1 h-screen bg-[#49423B]">
-            <AlbumArt imageUrl={cover} />
+          <div
+            className={`grid grid-cols-2 grid-rows-1 h-screen`}
+            style={{backgroundColor: bgColor, color: getTextColor(bgColor)}}
+          >
+            <AlbumArt imageUrl={imageUrl} />
             <TrackInfo
-              title="You're Gonna Go Far"
-              artist="Noah Kahan"
-              album="Stick Season (We'll All Be Here Forever)"
+              title={track.title}
+              artist={track.artist}
+              album={track.album}
             />
           </div>
         </div>
@@ -80,39 +82,49 @@ function App() {
     </div>
   );
 
-  function loginWithSpotify() {
-    console.log("reached");
-    const spotifyLink = buildURL(AUTHORIZE_URL, testParams);
-    window.location.href = spotifyLink;
-  }
-}
-
-type Parameter = Record<string, string>;
-
-function buildURL(url: string, params: Parameter) {
-  var queryString = "";
-  for (var key in params) {
-    queryString +=
-      encodeURIComponent(key) + "=" + encodeURIComponent(params[key]) + "&";
+  function handleSpotifyLogin() {
+    window.location.href = `${BACKEND_URL}/spotify/login`;
   }
 
-  queryString = queryString.substring(0, queryString.length - 1); // Remove the last '&'
+  async function getCurrentTrack() {
+    if (!accessToken) {
+      return;
+    }
 
-  return url + queryString;
+    try {
+      const response = await axios.get(
+        "https://api.spotify.com/v1/me/player/currently-playing",
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (response.status == 204) {
+        return;
+      }
+
+      setTrack({
+        title: response.data.item.name,
+        artist: response.data.item.artists[0].name,
+        album: response.data.item.album.name,
+      });
+      setImageUrl(response.data.item.album.images[0].url);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  function getTextColor(hex: string) {
+    const r = Number("0x" + hex.substring(1, 3))
+    const g = Number("0x" + hex.substring(3, 5))
+    const b = Number("0x" + hex.substring(5, 7))
+
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+    return luminance > 0.5 ? "black" : "white"
+  }
 }
-
-function getTokenFromUrl() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const token = urlParams.get("access_token");
-
-  return token ?? "";
-}
-
-const testParams = {
-  client_id: CLIENT_ID,
-  response_type: "token",
-  redirect_uri: REDIRECT_URI,
-  scope: SCOPES,
-};
 
 export default App;
