@@ -1,6 +1,4 @@
 export default function Login() {
-  const BACKEND_URL = "http://localhost:5000";
-
   return (
     <div className="flex items-center justify-center h-screen bg-black">
       <button
@@ -13,6 +11,6 @@ export default function Login() {
   );
 
   function handleSpotifyLogin() {
-    window.location.href = `${BACKEND_URL}/spotify/login`;
+    window.location.href = `${import.meta.env.VITE_API_URL}/spotify/login`;
   }
 }

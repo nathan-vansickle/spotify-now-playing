@@ -3,7 +3,6 @@ import "./App.css";
 import "./components/AlbumArt";
 import AlbumArt from "./components/AlbumArt";
 import TrackInfo from "./components/TrackInfo";
-// import cover from "./assets/album.jpg";
 import axios from "axios";
 import { getColor } from "color-thief-react";
 import NoTrackPlaying from "./components/NoTrackPlaying";
@@ -136,7 +135,7 @@ function App() {
 
     async function refreshAccessToken() {
       try {
-        const response = await axios.post("/refresh_token", {
+        const response = await axios.post(`${import.meta.env.VITE_API_URL}/spotify/refresh_token`, {
           refreshToken: refreshToken,
         });
 
