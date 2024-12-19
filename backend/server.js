@@ -9,7 +9,15 @@ const port = process.env.PORT || 5000;
 const SCOPES = "user-read-playback-state user-read-currently-playing";
 const AUTHORIZE_URL = "https://accounts.spotify.com/authorize";
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    "http://localhost:5173", // Local development
+    process.env.FRONTEND_URL
+  ],
+  credentials: true
+}
+
+));
 app.use(express.json());
 
 app.get("/spotify/login", (req, res) => {
@@ -61,6 +69,44 @@ app.get("/spotify/callback", async (req, res) => {
     res.redirect(frontendRedirectUrl.toString());
   } catch (error) {
     console.error(error);
+  }
+});
+
+app.post("/spotify/refresh_token", async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status.json({ Error: "Refresh token is expired" });
+    }
+
+    const response = await axios.post(
+      "https://accounts.spotify.com/api/token",
+      new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+      }),
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization:
+            "Basic " +
+            new Buffer.from(
+              process.env.SPOTIFY_CLIENT_ID +
+                ":" +
+                process.env.SPOTIFY_CLIENT_SECRET
+            ).toString("base64"),
+        },
+      }
+    );
+
+    res.json({
+      access_token: response.data.access_token,
+      refresh_token: response.data.access_token,
+      token_type: response.data.token_type,
+    });
+  } catch (error) {
+    console.log(error);
   }
 });
 
