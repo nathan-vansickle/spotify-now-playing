@@ -1,12 +1,18 @@
 import { useEffect, useState } from "react";
 import "./App.css";
-import "./components/AlbumArt";
 import AlbumArt from "./components/AlbumArt";
 import TrackInfo from "./components/TrackInfo";
-import axios from "axios";
-import { getColor } from "color-thief-react";
 import NoTrackPlaying from "./components/NoTrackPlaying";
 import Login from "./components/Login";
+import axios from "axios";
+
+// CLEANUP TASKS:
+// 1. Remove color thief call and replace with local calculation
+// 3. Add comments
+
+// ADDTL FEATURES:
+// 1. Clock when no track playing
+// 2. Remember me?
 
 interface Track {
   title: string;
@@ -58,11 +64,30 @@ function App() {
   useEffect(() => {
     async function getDominantColor() {
       if (imageUrl) {
-        try {
-          const dominantColor = await getColor(imageUrl, "hex", "anonymous");
-          setBgColor(dominantColor);
-        } catch (error) {
-          console.log(error);
+        const albumArt = new Image()
+        albumArt.crossOrigin = "anonymous"
+        albumArt.src = imageUrl
+
+        albumArt.onload = () => {
+          const canvas = document.createElement("canvas")
+          const context = canvas.getContext("2d")
+          canvas.width = albumArt.width
+          canvas.height = albumArt.height
+          context?.drawImage(albumArt, 0, 0, albumArt.width, albumArt.height)
+
+          const imageData = context?.getImageData(0, 0, albumArt.width, albumArt.height).data
+
+          if (imageData) {
+            let r = 0, g = 0, b = 0, count = 0
+            for (let i = 0; i <imageData.length; i+= 4) {
+              r += imageData[i]
+              g += imageData[i + 1]
+              b += imageData[i + 2]
+              count++
+            }
+            const hex = rgbToHex(Math.round(r / count), Math.round(g / count), Math.round(b / count))
+            setBgColor(hex)
+          }
         }
       }
     }
@@ -152,6 +177,26 @@ function App() {
         console.log(error);
       }
     }
+  }
+
+  function rgbToHex(r: number, g: number, b: number) {
+    const redDiv16: number = r / 16
+    const redWhole: number = Math.floor(redDiv16)
+    const redDecimal: number = (redDiv16 - redWhole) * 16
+    const redHex: string = redWhole.toString(16) + redDecimal.toString(16)
+
+
+    const greenDiv16 = g / 16
+    const greenWhole = Math.floor(greenDiv16)
+    const greenDecimal = (greenDiv16 - greenWhole) * 16
+    const greenHex: string = greenWhole.toString(16) + greenDecimal.toString(16)
+
+    const blueDiv16 = b / 16
+    const blueWhole = Math.floor(blueDiv16)
+    const blueDecimal = (blueDiv16 - blueWhole) * 16
+    const blueHex: string = blueWhole.toString(16) + blueDecimal.toString(16)
+
+    return `#${redHex}${greenHex}${blueHex}`
   }
 
   function getTextColor(hex: string) {
