@@ -1,12 +1,19 @@
 import { useEffect, useState } from "react";
 import "./App.css";
-import "./components/AlbumArt";
 import AlbumArt from "./components/AlbumArt";
 import TrackInfo from "./components/TrackInfo";
-import axios from "axios";
-import { getColor } from "color-thief-react";
 import NoTrackPlaying from "./components/NoTrackPlaying";
 import Login from "./components/Login";
+import axios from "axios";
+import { getColor } from "color-thief-react";
+
+// CLEANUP TASKS:
+// 1. Remove color thief call and replace with local calculation
+// 3. Add comments
+
+// ADDTL FEATURES:
+// 1. Clock when no track playing
+// 2. Remember me?
 
 interface Track {
   title: string;
